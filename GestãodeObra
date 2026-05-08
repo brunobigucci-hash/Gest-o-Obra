@@ -1,0 +1,433 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MBigucci | Painel de Obra</title>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <style>
+    :root{
+      --red:#e30613; --red-dark:#b31217; --nav:#071827; --nav2:#0b2135;
+      --bg:#f5f7fb; --card:#fff; --text:#111827; --muted:#64748b; --border:#e5e7eb;
+      --green:#16a34a; --green-bg:#dcfce7; --yellow:#d97706; --yellow-bg:#fef3c7;
+      --blue:#2563eb; --blue-bg:#dbeafe; --purple:#7c3aed; --purple-bg:#ede9fe;
+      --danger:#dc2626; --danger-bg:#fee2e2; --shadow:0 10px 28px rgba(15,23,42,.08);
+      --radius:18px;
+    }
+    *{box-sizing:border-box}
+    body{margin:0;background:var(--bg);font-family:Inter,Arial,sans-serif;color:var(--text)}
+    button,input,select,textarea{font:inherit}
+    button{border:0;cursor:pointer;border-radius:10px;padding:10px 14px;color:white;background:#0f172a;font-weight:700;transition:.15s}
+    button:hover{transform:translateY(-1px);opacity:.94}
+    input,select,textarea{width:100%;border:1px solid var(--border);border-radius:12px;padding:11px 12px;background:white;color:var(--text)}
+    textarea{min-height:92px;resize:vertical}
+    .app{display:grid;grid-template-columns:270px 1fr;min-height:100vh}
+    .sidebar{background:linear-gradient(180deg,var(--nav),#06111e);color:#e5eef8;padding:22px 14px;position:sticky;top:0;height:100vh;overflow:auto}
+    .logo{font-size:28px;font-weight:900;letter-spacing:-1px;margin:0 0 4px 4px}.logo span{color:var(--red)}
+    .logo-sub{font-size:13px;color:#cbd5e1;margin:0 0 28px 5px}
+    .nav-group-title{font-size:11px;color:#8aa0b8;text-transform:uppercase;margin:22px 10px 8px}
+    .nav-btn{width:100%;display:flex;align-items:center;gap:10px;background:transparent;color:#dbeafe;text-align:left;padding:12px 14px;border-radius:12px;margin-bottom:6px;font-weight:700}
+    .nav-btn:hover,.nav-btn.active{background:var(--red);color:white;transform:none}
+    .main{padding:22px 28px 40px;min-width:0}
+    .topbar{display:flex;justify-content:space-between;align-items:center;gap:16px;margin-bottom:18px}
+    .page-title{margin:0;font-size:27px;letter-spacing:-.4px}.breadcrumb{font-size:13px;color:var(--muted);margin-top:5px}
+    .top-actions{display:flex;gap:12px;align-items:center}.date-pill{background:var(--nav);color:white;border-radius:12px;padding:12px 16px;font-size:14px;min-width:160px}
+    .date-pill small{display:block;color:#cbd5e1;margin-bottom:4px}
+    .card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);padding:18px}
+    .hero-card{padding:24px;margin-bottom:18px}.label{font-size:12px;color:var(--muted);font-weight:800;text-transform:uppercase;letter-spacing:.05em}
+    #obraNomeInput{border:0;padding:0;margin-top:8px;font-size:29px;font-weight:900;background:transparent}.muted{color:var(--muted)}
+    .grid{display:grid;gap:16px}.grid.cols-4{grid-template-columns:repeat(4,1fr)}.grid.cols-3{grid-template-columns:repeat(3,1fr)}.grid.cols-2{grid-template-columns:repeat(2,1fr)}
+    .kpi{display:flex;gap:14px;align-items:center}.kpi-icon{width:52px;height:52px;border-radius:18px;display:grid;place-items:center;font-size:24px}
+    .kpi h3{margin:0;font-size:26px}.kpi p{margin:4px 0 0;color:var(--muted);font-size:13px}
+    .section-head{display:flex;justify-content:space-between;gap:12px;align-items:center;margin-bottom:14px}.section-head h2,.section-head h3{margin:0}
+    .form-row{display:grid;grid-template-columns:repeat(4,1fr) auto;gap:10px;margin-bottom:12px}
+    .form-row.three{grid-template-columns:1fr 1fr 1fr auto}.form-row.two{grid-template-columns:1fr 1fr auto}
+    .scroll{max-height:430px;overflow-y:auto;padding-right:6px}.scroll.small{max-height:310px}
+    .item{border:1px solid var(--border);border-radius:14px;background:white;padding:14px;margin-bottom:10px}
+    .item-top{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}.item-title{font-weight:900;margin:0 0 6px}.item-sub{margin:3px 0;color:var(--muted);font-size:14px}
+    .actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}.btn-green,.btn-success{background:var(--green)}.btn-red,.btn-danger{background:var(--danger)}.btn-black{background:#0f172a}.btn-light{background:#eef2f7;color:#0f172a}.btn-blue{background:var(--blue)}
+    .badge{border-radius:999px;padding:6px 10px;font-size:12px;font-weight:900;white-space:nowrap}
+    .badge.green{background:var(--green-bg);color:#166534}.badge.yellow{background:var(--yellow-bg);color:#92400e}.badge.red{background:var(--danger-bg);color:#991b1b}.badge.blue{background:var(--blue-bg);color:#1d4ed8}.badge.purple{background:var(--purple-bg);color:#6d28d9}
+    .hidden{display:none!important}.tabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px}.tab{background:#eef2f7;color:#0f172a}.tab.active{background:var(--red);color:white}
+    .table-wrap{overflow:auto;border:1px solid var(--border);border-radius:14px;background:white}table{width:100%;border-collapse:collapse;min-width:900px}th,td{padding:12px;border-bottom:1px solid var(--border);text-align:left;font-size:14px}th{font-size:12px;text-transform:uppercase;color:var(--muted);background:#f8fafc}
+    .donut-area{display:grid;grid-template-columns:320px 1fr;gap:20px;align-items:center}.donut-wrapper{position:relative;width:320px;height:320px;margin:auto}.donut-wrapper canvas{width:100%;height:100%}
+    .donut-center{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;pointer-events:none}.donut-value{font-size:48px;font-weight:900}.donut-label{color:var(--muted);font-size:14px}
+    .legend{display:grid;gap:8px;max-height:220px;overflow-y:auto;padding-right:6px}.legend-item{display:flex;justify-content:space-between;gap:10px;align-items:center;border:1px solid var(--border);border-radius:12px;padding:10px;background:white}.legend-left{display:flex;align-items:center;gap:10px}.dot{width:13px;height:13px;border-radius:50%;flex:0 0 13px}
+    .inline-form{background:#f8fafc;border:1px solid var(--border);border-radius:14px;padding:12px;margin-top:12px;display:grid;gap:10px}
+    .alert{border-color:#f59e0b;box-shadow:inset 0 0 0 1px #f59e0b}.alert-text{color:#b45309;font-weight:900;font-size:13px;margin-top:6px}
+    .page{display:none}.page.active{display:block}
+    .check-row{display:grid;grid-template-columns:auto 1fr auto;gap:12px;align-items:center;border:1px solid var(--border);border-radius:13px;padding:12px;margin-bottom:9px}
+    .check-row input[type=text]{border:0;padding:0;background:transparent}
+    .import-box{border:1px dashed #cbd5e1;border-radius:16px;padding:16px;background:#f8fafc;margin-bottom:16px}
+    .freq-pill{display:inline-flex;align-items:center;gap:6px;border-radius:999px;padding:7px 10px;font-size:12px;font-weight:900;background:#f1f5f9;color:#0f172a}
+    @media(max-width:1100px){.app{grid-template-columns:1fr}.sidebar{position:relative;height:auto}.grid.cols-4,.grid.cols-3,.grid.cols-2,.form-row,.form-row.three,.form-row.two,.donut-area{grid-template-columns:1fr}.topbar{flex-direction:column;align-items:stretch}}
+    @media(max-width:650px){.main{padding:14px}.top-cards{grid-template-columns:1fr 1fr}.donut-wrapper{width:250px;height:250px}.donut-value{font-size:36px}.section-head{flex-direction:column;align-items:stretch}.actions button,.section-head button{width:100%}}
+  </style>
+</head>
+<body>
+<div class="app">
+  <aside class="sidebar">
+    <div class="logo"><span>M</span>BIGUCCI</div>
+    <div class="logo-sub">Gestão de Obras</div>
+
+    <button class="nav-btn active" data-page="dashboard">⌂ Dashboard</button>
+    <button class="nav-btn" data-page="programacao">▣ Programação da Obra</button>
+    <button class="nav-btn" data-page="conferencias">☑ Conferência de Serviços</button>
+    <button class="nav-btn" data-page="compras">▤ Cronograma de Compras</button>
+    <button class="nav-btn" data-page="rotina">⚙ Rotina do Fiscal</button>
+    <button class="nav-btn" data-page="mapeamentos">◎ Mapeamentos e Ensaios</button>
+    <button class="nav-btn" data-page="status">◔ Gráfico de Status</button>
+    <button class="nav-btn" data-page="anotacoes">✎ Anotações</button>
+
+    <button class="nav-btn" data-page="checklist">☑ Checklist Diário</button>
+    <button class="nav-btn" data-page="pendencias">⚠ Pendências</button>
+    <button class="nav-btn" data-page="materiais">▣ Materiais e Entregas</button>
+  </aside>
+
+  <main class="main">
+    <div class="topbar">
+      <div><h1 class="page-title" id="pageTitle">Dashboard</h1><div class="breadcrumb">MBigucci › Painel de Obra</div></div>
+      <div class="top-actions"><div class="date-pill"><small>Hoje</small><strong id="dataHoje">--/--/----</strong></div></div>
+    </div>
+
+    <section class="card hero-card">
+      <div class="label">Nome da obra</div>
+      <input id="obraNomeInput" value="Obra MBigucci" oninput="editarNomeObra(this.value)" />
+      <p class="muted">Controle operacional da obra, programação, conferências, compras, rotina do fiscal, anotações e avanço físico.</p>
+    </section>
+
+    <section class="page active" id="page-dashboard">
+      <div class="grid cols-4" style="margin-bottom:16px">
+        <div class="card kpi"><div class="kpi-icon" style="background:var(--yellow-bg);color:var(--yellow)">☑</div><div><h3 id="kpiConferencias">0</h3><p>Conferências pendentes</p></div></div>
+        <div class="card kpi"><div class="kpi-icon" style="background:var(--danger-bg);color:var(--danger)">⏰</div><div><h3 id="kpiCompras">0</h3><p>Compras para cobrar</p></div></div>
+        <div class="card kpi"><div class="kpi-icon" style="background:var(--danger-bg);color:var(--danger)">!</div><div><h3 id="kpiVencidas">0</h3><p>Tarefas vencidas</p></div></div>
+        <div class="card kpi"><div class="kpi-icon" style="background:var(--blue-bg);color:var(--blue)">▣</div><div><h3 id="kpiProgramacoes">0</h3><p>Programações ativas</p></div></div>
+      </div>
+      <div class="grid cols-4" style="margin-bottom:16px">
+        <div class="card kpi"><div class="kpi-icon" style="background:var(--yellow-bg);color:var(--yellow)">◴</div><div><h3 id="kpiMateriais">0</h3><p>Materiais pendentes</p></div></div>
+        <div class="card kpi"><div class="kpi-icon" style="background:var(--green-bg);color:var(--green)">✓</div><div><h3 id="kpiServicosFinalizados">0</h3><p>Serviços finalizados</p></div></div>
+        <div class="card kpi"><div class="kpi-icon" style="background:var(--green-bg);color:var(--green)">%</div><div><h3 id="kpiAvanco">0%</h3><p>Avanço acumulado</p></div></div>
+        <div class="card kpi"><div class="kpi-icon" style="background:var(--purple-bg);color:var(--purple)">⚙</div><div><h3 id="kpiRotina">0</h3><p>Rotina do fiscal hoje</p></div></div>
+      </div>
+      <div class="grid cols-3" style="margin-bottom:16px">
+        <div class="card"><div class="section-head"><h3>Conferências pendentes</h3><button class="btn-light" onclick="showPage('conferencias')">Ver tudo</button></div><div id="dashConferencias" class="scroll small"></div></div>
+        <div class="card"><div class="section-head"><h3>Compras para cobrar — alerta 7 dias</h3><button class="btn-light" onclick="showPage('compras')">Ver compras</button></div><div id="dashCompras" class="scroll small"></div></div>
+        <div class="card"><div class="section-head"><h3>Rotina do fiscal — hoje</h3><button class="btn-light" onclick="showPage('rotina')">Ver rotina</button></div><div id="dashRotina" class="scroll small"></div></div>
+      </div>
+      <div class="grid cols-3">
+        <div class="card"><div class="section-head"><h3>Programações em atraso</h3><button class="btn-light" onclick="showPage('programacao')">Ver programação</button></div><div id="dashProgramacoesAtrasadas" class="scroll small"></div></div>
+        <div class="card"><div class="section-head"><h3>Materiais pendentes</h3><button class="btn-light" onclick="showPage('materiais')">Ver materiais</button></div><div id="dashMateriais" class="scroll small"></div></div>
+        <div class="card"><div class="section-head"><h3>Últimas anotações</h3><button class="btn-light" onclick="showPage('anotacoes')">Ver anotações</button></div><div id="dashNotas" class="scroll small"></div></div>
+      </div>
+    </section>
+
+    <section class="page" id="page-programacao">
+      <div class="card">
+        <div class="section-head"><h2>Programação da Obra</h2></div>
+        <div class="form-row">
+          <input id="progServico" placeholder="Serviço">
+          <input id="progLocal" placeholder="Local / pavimento / unidade">
+          <input id="progDataInicio" type="date">
+          <input id="progResponsavel" placeholder="Responsável">
+          <button class="btn-black" onclick="addServicoProgramado()">Adicionar</button>
+        </div>
+        <textarea id="progObs" placeholder="Observação"></textarea>
+        <div class="tabs" style="margin-top:14px">
+          <button class="tab active" onclick="setProgFiltro('ativos',this)">Ativos</button>
+          <button class="tab" onclick="setProgFiltro('finalizados',this)">Finalizados</button>
+          <button class="tab" onclick="setProgFiltro('cancelados',this)">Cancelados</button>
+        </div>
+        <div id="listaProgramacao" class="scroll"></div>
+      </div>
+    </section>
+
+    <section class="page" id="page-conferencias">
+      <div class="card">
+        <div class="section-head"><h2>Conferência de Serviços</h2><span class="badge yellow">Gerado ao finalizar serviço</span></div>
+        <div id="listaConferencias" class="scroll"></div>
+      </div>
+    </section>
+
+    <section class="page" id="page-compras">
+      <div class="tabs">
+        <button class="tab active" onclick="setCompraTab('geral',this)">Visão Geral</button>
+        <button class="tab" onclick="setCompraTab('cronograma',this)">Cronograma de Compras</button>
+        <button class="tab" onclick="setCompraTab('solicitados',this)">Pedidos Solicitados</button>
+        <button class="tab" onclick="setCompraTab('pendentes',this)">Entregas Pendentes</button>
+        <button class="tab" onclick="setCompraTab('historico',this)">Histórico de Entregas</button>
+        <button class="tab" onclick="setCompraTab('fornecedores',this)">Fornecedores</button>
+      </div>
+      <div class="card import-box">
+        <div class="section-head"><h2>Importar planilha de compras MBigucci</h2></div>
+        <p class="muted">Selecione o arquivo .xlsx do planejamento. O site lê as abas da planilha e importa os itens com as colunas de serviço e datas.</p>
+        <input type="file" id="arquivoCompras" accept=".xlsx,.xls" onchange="importarPlanilhaCompras(event)">
+        <div class="actions"><button class="btn-black" onclick="$('arquivoCompras').click()">Selecionar planilha</button><button class="btn-red" onclick="limparComprasImportadas()">Limpar compras importadas</button></div>
+        <p class="muted" id="importStatus"></p>
+      </div>
+      <div class="card">
+        <div class="section-head"><h2>Cronograma de Compras</h2></div>
+        <div class="form-row">
+          <input id="compraMaterial" placeholder="Material / serviço">
+          <input id="compraServico" placeholder="Serviço vinculado">
+          <input id="compraFornecedor" placeholder="Fornecedor">
+          <input id="compraInicioEng" type="date" title="Data de início do processo do engenheiro">
+          <button class="btn-black" onclick="addCompra()">Adicionar</button>
+        </div>
+        <div class="form-row three">
+          <input id="compraNecessidade" type="date" title="Data de necessidade na obra">
+          <input id="compraPedido" placeholder="Nº do pedido">
+          <select id="compraStatus">
+            <option>Aguardando alerta</option><option>Preciso cobrar engenheiro</option><option>Solicitado</option><option>Pedido emitido</option><option>Em trânsito</option><option>Entregue</option><option>Atrasado</option><option>Cancelado</option>
+          </select>
+          <button class="btn-light" onclick="limparFormCompras()">Limpar</button>
+        </div>
+        <textarea id="compraObs" placeholder="Observação"></textarea>
+        <div id="comprasResumo" class="grid cols-4" style="margin:16px 0"></div>
+        <div id="listaCompras"></div>
+      </div>
+    </section>
+
+    <section class="page" id="page-rotina">
+      <div class="card">
+        <div class="section-head"><h2>Rotina do Fiscal</h2></div>
+        <p class="muted">Painel de cobranças por frequência. Rotinas diárias, quinzenais, mensais e trimestrais aparecem automaticamente conforme a data. Esporádicos aparecem quando você iniciar.</p>
+        <div class="grid cols-4" style="margin-bottom:16px">
+          <div class="card kpi"><div><h3 id="rotinaHojeQtd">0</h3><p>Itens para hoje</p></div></div>
+          <div class="card kpi"><div><h3 id="rotinaSemanaQtd">0</h3><p>Itens da semana</p></div></div>
+          <div class="card kpi"><div><h3 id="rotinaMensalQtd">0</h3><p>Mensais ativos</p></div></div>
+          <div class="card kpi"><div><h3 id="rotinaEsporadicaQtd">0</h3><p>Esporádicos ativos</p></div></div>
+        </div>
+        <div class="tabs">
+          <button class="tab active" onclick="setRotinaTab('hoje',this)">Hoje</button>
+          <button class="tab" onclick="setRotinaTab('semana',this)">Esta semana</button>
+          <button class="tab" onclick="setRotinaTab('quinzenal',this)">Quinzenal</button>
+          <button class="tab" onclick="setRotinaTab('mensal',this)">Mensal</button>
+          <button class="tab" onclick="setRotinaTab('trimestral',this)">Trimestral</button>
+          <button class="tab" onclick="setRotinaTab('esporadico',this)">Esporádicos</button>
+        </div>
+        <div class="actions" style="margin-bottom:14px">
+          <button class="btn-blue" onclick="iniciarRotinaEsporadica('Concretagem e Ensaios')">Iniciar concretagem</button>
+          <button class="btn-blue" onclick="iniciarRotinaEsporadica('Mapeamento de fachada')">Iniciar mapeamento de fachada</button>
+          <button class="btn-blue" onclick="iniciarRotinaEsporadica('Mapeamento de aço')">Registrar chegada de aço</button>
+          <button class="btn-blue" onclick="iniciarRotinaEsporadica('Controle de revisão de projetos')">Registrar revisão de projeto</button>
+        </div>
+        <div id="listaRotinaInteligente" class="scroll"></div>
+      </div>
+    </section>
+
+    <section class="page" id="page-mapeamentos">
+      <div class="card">
+        <div class="section-head"><h2>Mapeamentos e Ensaios</h2></div>
+        <div class="form-row">
+          <select id="mapTipo"><option>Mapeamento de concreto</option><option>Mapeamento de bloco estrutural, argamassa e graute</option><option>Mapeamento de aço</option><option>Mapeamento de fachada</option></select>
+          <input id="mapLocal" placeholder="Local / aplicação">
+          <input id="mapData" type="date">
+          <select id="mapStatus"><option>Em aberto</option><option>Aguardando resultado</option><option>Aguardando assinatura do engenheiro</option><option>Aprovado</option><option>Com problema</option></select>
+          <button class="btn-black" onclick="addMapeamento()">Adicionar</button>
+        </div>
+        <textarea id="mapObs" placeholder="Observação"></textarea>
+        <div id="listaMapeamentos" class="scroll"></div>
+      </div>
+    </section>
+
+    <section class="page" id="page-status">
+      <div class="card">
+        <h2>Painel de status da obra</h2>
+        <p class="muted">Selecione mês e ano. Cada lançamento compõe a rosca por mês/ano.</p>
+        <div class="dashboard-entry-status">
+          <select id="statusMes"></select>
+          <input id="statusAno" type="number" min="2020" max="2100">
+          <button class="btn-black" onclick="verificarStatusSelecionado()">Verificar mês</button>
+        </div>
+        <div id="painelLancamentoSelecionado" class="item hidden"></div>
+        <div class="total-item"><span>Total acumulado da obra</span><strong id="realizadoAcumuladoDashboard">0%</strong></div>
+        <div class="donut-area">
+          <div class="donut-wrapper"><canvas id="graficoRosca" width="320" height="320"></canvas><div class="donut-center"><div class="donut-value" id="donutValor">0%</div><div class="donut-label">Total da obra</div></div></div>
+          <div id="legendaGraficoStatus" class="legend"></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="page" id="page-anotacoes">
+      <div class="card">
+        <h2>Anotações rápidas do dia</h2><p class="muted" id="notaDataInfo"></p>
+        <textarea id="notaTexto" placeholder="Escreva uma observação da obra..."></textarea>
+        <div class="actions"><button class="btn-black" onclick="addNota()">Salvar anotação</button></div>
+        <div id="listaNotas" class="scroll" style="margin-top:14px"></div>
+      </div>
+    </section>
+
+    <section class="page" id="page-checklist"><div class="card"><div class="section-head"><h2>Checklist diário da obra</h2><button class="btn-black" onclick="addChecklistItem()">+ Novo item</button></div><div id="checklistContainer" class="scroll"></div></div></section>
+    <section class="page" id="page-pendencias"><div class="card"><div class="section-head"><h2>Registro de pendências</h2><button class="btn-success" onclick="toggleConcluidasPendencias()">Ver concluídas</button></div><div class="form-row three"><input id="pendenciaItem" placeholder="Pendência"><input id="pendenciaResponsavel" placeholder="Responsável"><input id="pendenciaPrazo" type="date"><button class="btn-black" onclick="addPendencia()">Adicionar</button></div><div id="listaPendenciasAbertas" class="scroll"></div><div id="painelPendenciasConcluidas" class="hidden"><h3>Pendências concluídas</h3><div id="listaPendenciasConcluidas" class="scroll"></div></div></div></section>
+    <section class="page" id="page-materiais"><div class="card"><div class="section-head"><h2>Materiais e Entregas</h2><div class="actions"><button class="btn-danger" onclick="toggleMateriaisCancelados()">Ver cancelados</button><button class="btn-success" onclick="toggleMateriaisEntregues()">Ver entregues</button></div></div><div class="form-row"><input id="materialPedido" placeholder="Número do pedido"><input id="materialNome" placeholder="Material"><input id="materialFornecedor" placeholder="Fornecedor"><input id="materialPrevisto" type="date"><button class="btn-black" onclick="addMaterial()">Adicionar</button></div><div id="listaMateriaisPendentes" class="scroll"></div><div id="painelMateriaisCancelados" class="hidden"><h3>Materiais cancelados</h3><div id="listaMateriaisCancelados" class="scroll"></div></div><div id="painelMateriaisEntregues" class="hidden"><h3>Materiais entregues</h3><div class="form-row"><input id="filtroDataInicio" type="date"><input id="filtroDataFim" type="date"><input id="filtroProduto" placeholder="Produto"><input id="filtroFornecedor" placeholder="Fornecedor"><input id="filtroPedido" placeholder="Pedido"></div><div class="actions"><button class="btn-success" onclick="renderMateriaisEntreguesFiltrados()">Buscar</button><button class="btn-black" onclick="limparFiltrosEntregues()">Limpar</button></div><div id="listaMateriaisEntregues" class="scroll"></div></div></div></section>
+
+  </main>
+</div>
+
+<script>
+const STORAGE_KEY="painel_obra_mbigucci_v5";
+const mesesNomes=["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
+const coresSegmentos=["#e30613","#2563eb","#16a34a","#f59e0b","#7c3aed","#0f766e","#dc2626","#0891b2","#ca8a04","#374151","#9333ea","#166534","#be123c","#1d4ed8","#047857","#d97706","#6d28d9","#0f766e","#991b1b","#0369a1","#a16207","#4b5563","#7e22ce","#14532d"];
+const atividadesBaseRotina=["Produtividade","Metas Ambientais","Qualificação de Fornecedores","Concretagem e Ensaios","Mapeamentos","Projetos e Revisões","Checklists","Personalizações/My Home","Treinamentos e Segurança","Equipamentos de Medição"];
+
+const defaultState={
+  obraNome:"Obra MBigucci",
+  checklist:[{id:1,texto:"Equipe presente conferida",done:false},{id:2,texto:"Materiais do dia verificados",done:false},{id:3,texto:"Frentes de serviço alinhadas",done:false},{id:4,texto:"Segurança inspecionada",done:false}],
+  pendencias:[], materiais:[], programacoes:[], conferencias:[], compras:[], rotina:[], mapeamentos:[], rotinaHistorico:[], rotinaEsporadica:[], notas:[], statusObra:[],
+  ui:{pendenciasConcluidasOpen:false,materiaisCanceladosOpen:false,materiaisEntreguesOpen:false,progFiltro:"ativos",compraTab:"geral",rotinaTab:"hoje"}
+};
+let state=loadState();
+
+function loadState(){
+  try{
+    const raw=localStorage.getItem(STORAGE_KEY);
+    const parsed=raw?JSON.parse(raw):{};
+    const merged={...defaultState,...parsed};
+    merged.ui={...defaultState.ui,...(parsed.ui||{})};
+    ["checklist","pendencias","materiais","programacoes","conferencias","compras","rotinaHistorico","rotinaEsporadica","mapeamentos","notas","statusObra"].forEach(k=>{if(!Array.isArray(merged[k])) merged[k]=[]});
+    // migração leve: antigos campos de programação
+    if(Array.isArray(parsed.rotina) && !parsed.rotinaHistorico){ merged.rotinaHistorico=parsed.rotina; }
+    merged.programacoes=merged.programacoes.map(p=>({
+      id:p.id||Date.now()+Math.random(), data:p.data||p.dataInicio||"", frente:p.frente||p.servico||"Serviço", area:p.area||p.local||"", responsavel:p.responsavel||"", observacao:p.observacao||"", motivoCancelamento:p.motivoCancelamento||"", status:normalizaStatusProg(p.status||"Programado"), mostrandoCancelamento:false
+    }));
+    return merged;
+  }catch(e){return JSON.parse(JSON.stringify(defaultState))}
+}
+function saveState(){localStorage.setItem(STORAGE_KEY,JSON.stringify(state))}
+function $(id){return document.getElementById(id)}
+function esc(t){return String(t??"").replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;").replaceAll('"',"&quot;").replaceAll("'","&#039;")}
+function hojeISO(){return new Date().toISOString().slice(0,10)}
+function br(d){if(!d)return"-"; const [y,m,day]=d.split("-"); return `${day}/${m}/${y}`}
+function badgeClass(s){if(["Concluído","Finalizado","Entregue","Aprovado","Conforme"].includes(s))return"badge green"; if(["Cancelado","Atrasado","Reprovado","Não conforme","Com problema"].includes(s))return"badge red"; if(["Em execução","Pedido emitido","Em trânsito","Reinspeção"].includes(s))return"badge blue"; return"badge yellow"}
+function normalizaStatusProg(s){if(s==="Concluído")return"Finalizado"; return s}
+function setTitle(t){$("pageTitle").textContent=t}
+function showPage(page){
+  document.querySelectorAll(".page").forEach(p=>p.classList.remove("active"));
+  document.querySelectorAll(".nav-btn").forEach(b=>b.classList.toggle("active",b.dataset.page===page));
+  const el=$("page-"+page); if(el)el.classList.add("active");
+  const titles={dashboard:"Dashboard",programacao:"Programação da Obra",conferencias:"Conferência de Serviços",compras:"Cronograma de Compras",rotina:"Rotina do Fiscal",mapeamentos:"Mapeamentos e Ensaios",status:"Gráfico de Status",anotacoes:"Anotações",checklist:"Checklist Diário",pendencias:"Pendências",materiais:"Materiais e Entregas"};
+  setTitle(titles[page]||"Painel de Obra"); renderAll();
+}
+document.querySelectorAll(".nav-btn").forEach(b=>b.addEventListener("click",()=>showPage(b.dataset.page)));
+
+function editarNomeObra(v){state.obraNome=v||"Obra MBigucci";saveState()}
+function renderHeader(){if($("obraNomeInput"))$("obraNomeInput").value=state.obraNome;if($("dataHoje"))$("dataHoje").textContent=new Date().toLocaleDateString("pt-BR");if($("notaDataInfo"))$("notaDataInfo").textContent=`Data do registro: ${new Date().toLocaleDateString("pt-BR")}`}
+
+// CHECKLIST
+function renderChecklist(){const c=$("checklistContainer");if(!c)return;c.innerHTML="";state.checklist.forEach(i=>{const d=document.createElement("div");d.className="check-row";d.innerHTML=`<input type="checkbox" ${i.done?"checked":""} onchange="toggleChecklist(${i.id})"><input type="text" value="${esc(i.texto)}" onchange="editarChecklist(${i.id},this.value)"><button class="icon-btn" onclick="removerChecklist(${i.id})">Excluir</button>`;c.appendChild(d)})}
+function toggleChecklist(id){const i=state.checklist.find(x=>x.id===id);if(i)i.done=!i.done;saveState();renderAll()}
+function editarChecklist(id,v){const i=state.checklist.find(x=>x.id===id);if(i)i.texto=v;saveState()}
+function addChecklistItem(){state.checklist.push({id:Date.now(),texto:"Novo item do checklist",done:false});saveState();renderAll()}
+function removerChecklist(id){state.checklist=state.checklist.filter(x=>x.id!==id);saveState();renderAll()}
+
+// PENDÊNCIAS
+function renderPendencias(){const a=$("listaPendenciasAbertas"), c=$("listaPendenciasConcluidas"); if(!a||!c)return; a.innerHTML=""; c.innerHTML="";
+ const abertas=state.pendencias.filter(p=>p.status!=="Concluído"), conc=state.pendencias.filter(p=>p.status==="Concluído");
+ if(!abertas.length)a.innerHTML=`<div class="empty-state">Nenhuma pendência aberta.</div>`;
+ abertas.forEach(p=>a.appendChild(itemPendencia(p,true)));
+ if(!conc.length)c.innerHTML=`<div class="empty-state">Nenhuma pendência concluída.</div>`;
+ conc.forEach(p=>c.appendChild(itemPendencia(p,false)));
+ $("painelPendenciasConcluidas").classList.toggle("hidden",!state.ui.pendenciasConcluidasOpen);
+}
+function itemPendencia(p,aberta){const d=document.createElement("div");d.className="item";d.innerHTML=`<div class="item-top"><div><p class="item-title">${esc(p.item)}</p><p class="item-sub">Responsável: ${esc(p.responsavel)}</p><p class="item-sub">Prazo: ${br(p.prazo)}</p></div><span class="${badgeClass(p.status)}">${p.status}</span></div>${aberta?`<div class="actions"><button class="btn-success" onclick="concluirPendencia(${p.id})">Marcar como concluído</button></div>`:""}`;return d}
+function toggleConcluidasPendencias(){state.ui.pendenciasConcluidasOpen=!state.ui.pendenciasConcluidasOpen;saveState();renderPendencias()}
+function addPendencia(){const item=$("pendenciaItem").value.trim(), resp=$("pendenciaResponsavel").value.trim(), prazo=$("pendenciaPrazo").value;if(!item||!resp||!prazo)return;state.pendencias.unshift({id:Date.now(),item,responsavel:resp,prazo,status:"Pendente"});["pendenciaItem","pendenciaResponsavel","pendenciaPrazo"].forEach(id=>$(id).value="");saveState();renderAll()}
+function concluirPendencia(id){const p=state.pendencias.find(x=>x.id===id);if(p)p.status="Concluído";saveState();renderAll()}
+
+// MATERIAIS ANTIGOS
+function renderMateriais(){const pend=$("listaMateriaisPendentes"), canc=$("listaMateriaisCancelados"); if(!pend||!canc)return;pend.innerHTML="";canc.innerHTML="";
+ const ps=state.materiais.filter(m=>m.status==="Pendente"), cs=state.materiais.filter(m=>m.status==="Cancelado");
+ if(!ps.length)pend.innerHTML=`<div class="empty-state">Nenhum material pendente.</div>`;
+ ps.forEach(m=>{const d=document.createElement("div");d.className="item";let form="";
+ if(m.mostrandoAcao==="entrega")form=`<div class="inline-form"><label>Data de entrega</label><input id="entrega_${m.id}" type="date"><div class="actions"><button class="btn-success" onclick="confirmarEntregaMaterial(${m.id})">Salvar entrega</button><button class="btn-black" onclick="fecharAcaoMaterial(${m.id})">Fechar</button></div></div>`;
+ if(m.mostrandoAcao==="cancelamento")form=`<div class="inline-form"><label>Motivo do cancelamento</label><textarea id="cancelamento_${m.id}"></textarea><div class="actions"><button class="btn-red" onclick="confirmarCancelamentoMaterial(${m.id})">Salvar cancelamento</button><button class="btn-black" onclick="fecharAcaoMaterial(${m.id})">Fechar</button></div></div>`;
+ d.innerHTML=`<div class="item-top"><div><p class="item-title">${esc(m.material)}</p><p class="item-sub">Pedido: ${esc(m.pedido)}</p><p class="item-sub">Fornecedor: ${esc(m.fornecedor)}</p><p class="item-sub">Entrega prevista: ${br(m.previsto)}</p></div><span class="${badgeClass(m.status)}">${m.status}</span></div><div class="actions"><button class="btn-success" onclick="abrirEntregaMaterial(${m.id})">Marcar como entregue</button><button class="btn-red" onclick="abrirCancelamentoMaterial(${m.id})">Cancelar pedido</button></div>${form}`;pend.appendChild(d)});
+ if(!cs.length)canc.innerHTML=`<div class="empty-state">Nenhum material cancelado.</div>`; cs.forEach(m=>{const d=document.createElement("div");d.className="item";d.innerHTML=`<p class="item-title">${esc(m.material)}</p><p class="item-sub">Pedido: ${esc(m.pedido)}</p><p class="item-sub">Fornecedor: ${esc(m.fornecedor)}</p><p class="item-sub">Motivo: ${esc(m.motivoCancelamento)}</p>`;canc.appendChild(d)});
+ $("painelMateriaisCancelados").classList.toggle("hidden",!state.ui.materiaisCanceladosOpen);$("painelMateriaisEntregues").classList.toggle("hidden",!state.ui.materiaisEntreguesOpen); if(state.ui.materiaisEntreguesOpen)renderMateriaisEntreguesFiltrados();
+}
+function addMaterial(){const pedido=$("materialPedido").value.trim(), material=$("materialNome").value.trim(), fornecedor=$("materialFornecedor").value.trim(), previsto=$("materialPrevisto").value;if(!pedido||!material||!fornecedor||!previsto)return;state.materiais.unshift({id:Date.now(),pedido,material,fornecedor,previsto,status:"Pendente",dataEntrega:"",motivoCancelamento:"",mostrandoAcao:""});["materialPedido","materialNome","materialFornecedor","materialPrevisto"].forEach(id=>$(id).value="");saveState();renderAll()}
+function toggleMateriaisCancelados(){state.ui.materiaisCanceladosOpen=!state.ui.materiaisCanceladosOpen;saveState();renderMateriais()}
+function toggleMateriaisEntregues(){state.ui.materiaisEntreguesOpen=!state.ui.materiaisEntreguesOpen;saveState();renderMateriais()}
+function abrirEntregaMaterial(id){state.materiais.forEach(m=>m.mostrandoAcao=m.id===id?"entrega":"");saveState();renderMateriais()}
+function abrirCancelamentoMaterial(id){state.materiais.forEach(m=>m.mostrandoAcao=m.id===id?"cancelamento":"");saveState();renderMateriais()}
+function fecharAcaoMaterial(id){const m=state.materiais.find(x=>x.id===id);if(m)m.mostrandoAcao="";saveState();renderMateriais()}
+function confirmarEntregaMaterial(id){const input=$(`entrega_${id}`);if(!input.value)return;const m=state.materiais.find(x=>x.id===id);if(m){m.status="Entregue";m.dataEntrega=input.value;m.mostrandoAcao=""}saveState();renderAll()}
+function confirmarCancelamentoMaterial(id){const input=$(`cancelamento_${id}`);if(!input.value.trim())return;const m=state.materiais.find(x=>x.id===id);if(m){m.status="Cancelado";m.motivoCancelamento=input.value.trim();m.mostrandoAcao=""}saveState();renderAll()}
+function renderMateriaisEntreguesFiltrados(){const el=$("listaMateriaisEntregues"); if(!el)return; const di=$("filtroDataInicio").value, df=$("filtroDataFim").value, prod=$("filtroProduto").value.toLowerCase(), forn=$("filtroFornecedor").value.toLowerCase(), ped=$("filtroPedido").value.toLowerCase(); let itens=state.materiais.filter(m=>m.status==="Entregue").filter(m=>(!di||m.dataEntrega>=di)&&(!df||m.dataEntrega<=df)&&(!prod||m.material.toLowerCase().includes(prod))&&(!forn||m.fornecedor.toLowerCase().includes(forn))&&(!ped||m.pedido.toLowerCase().includes(ped))); el.innerHTML=itens.length?"":`<div class="empty-state">Nenhum material entregue encontrado.</div>`; itens.forEach(m=>{const d=document.createElement("div");d.className="item";d.innerHTML=`<p class="item-title">${esc(m.material)}</p><p class="item-sub">Pedido: ${esc(m.pedido)} • Fornecedor: ${esc(m.fornecedor)}</p><p class="item-sub">Entregue em: ${br(m.dataEntrega)}</p>`;el.appendChild(d)})}
+function limparFiltrosEntregues(){["filtroDataInicio","filtroDataFim","filtroProduto","filtroFornecedor","filtroPedido"].forEach(id=>$(id).value="");renderMateriaisEntreguesFiltrados()}
+
+// PROGRAMAÇÃO + CONFERÊNCIA
+function setProgFiltro(f,btn){state.ui.progFiltro=f;document.querySelectorAll("#page-programacao .tab").forEach(x=>x.classList.remove("active"));btn.classList.add("active");saveState();renderProgramacao()}
+function addServicoProgramado(){const serv=$("progServico").value.trim(), loc=$("progLocal").value.trim(), data=$("progDataInicio").value, resp=$("progResponsavel").value.trim(), obs=$("progObs").value.trim(); if(!serv||!data)return; state.programacoes.unshift({id:Date.now(),data,frente:serv,area:loc,responsavel:resp,observacao:obs,motivoCancelamento:"",status:"Programado",mostrandoCancelamento:false});["progServico","progLocal","progDataInicio","progResponsavel","progObs"].forEach(id=>$(id).value="");saveState();renderAll()}
+function renderProgramacao(){const el=$("listaProgramacao"); if(!el)return; let itens=[...state.programacoes]; const f=state.ui.progFiltro||"ativos"; if(f==="ativos")itens=itens.filter(p=>!["Finalizado","Cancelado"].includes(p.status)).sort((a,b)=>a.data.localeCompare(b.data)); if(f==="finalizados")itens=itens.filter(p=>p.status==="Finalizado").sort((a,b)=>b.data.localeCompare(a.data)); if(f==="cancelados")itens=itens.filter(p=>p.status==="Cancelado").sort((a,b)=>b.data.localeCompare(a.data)); el.innerHTML=itens.length?"":`<div class="empty-state">Nenhum serviço nesta visão.</div>`; itens.forEach(p=>{const atraso=p.status==="Programado"&&p.data<hojeISO(); const d=document.createElement("div");d.className=`item ${atraso?"alert":""}`; d.innerHTML=`<div class="item-top"><div><p class="item-title">${esc(p.frente)}</p><p class="item-sub">Local: ${esc(p.area||"-")} • Início: ${br(p.data)}</p><p class="item-sub">Responsável: ${esc(p.responsavel||"-")}</p><p class="item-sub">${esc(p.observacao||"")}</p>${atraso?`<div class="alert-text">Programação em atraso</div>`:""}</div><span class="${badgeClass(p.status)}">${p.status}</span></div><div class="actions">${p.status==="Programado"?`<button class="btn-blue" onclick="mudarStatusServico(${p.id},'Em execução')">Iniciar</button>`:""}${p.status!=="Finalizado"&&p.status!=="Cancelado"?`<button class="btn-success" onclick="finalizarServico(${p.id})">Finalizar</button><button class="btn-red" onclick="abrirCancelamentoServico(${p.id})">Cancelar</button>`:""}${p.status==="Cancelado"?`<p class="item-sub">Motivo: ${esc(p.motivoCancelamento||"-")}</p>`:""}</div>${p.mostrandoCancelamento?`<div class="inline-form"><textarea id="motivo_servico_${p.id}" placeholder="Motivo do cancelamento"></textarea><div class="actions"><button class="btn-red" onclick="confirmarCancelamentoServico(${p.id})">Salvar cancelamento</button><button class="btn-black" onclick="fecharCancelamentoServico(${p.id})">Fechar</button></div></div>`:""}`; el.appendChild(d)})}
+function mudarStatusServico(id,status){const p=state.programacoes.find(x=>x.id===id);if(p)p.status=status;saveState();renderAll()}
+function finalizarServico(id){const p=state.programacoes.find(x=>x.id===id); if(!p)return; p.status="Finalizado"; p.dataFinalizacao=hojeISO(); const existe=state.conferencias.some(c=>c.programacaoId===id); if(!existe)state.conferencias.unshift({id:Date.now(),programacaoId:id,servico:p.frente,local:p.area,dataFinalizacao:hojeISO(),dataConferencia:"",resultado:"",tipoErro:"",observacao:"",status:"Pendente"}); saveState();renderAll()}
+function abrirCancelamentoServico(id){state.programacoes.forEach(p=>p.mostrandoCancelamento=p.id===id);saveState();renderProgramacao()}
+function fecharCancelamentoServico(id){const p=state.programacoes.find(x=>x.id===id);if(p)p.mostrandoCancelamento=false;saveState();renderProgramacao()}
+function confirmarCancelamentoServico(id){const input=$(`motivo_servico_${id}`);if(!input.value.trim())return;const p=state.programacoes.find(x=>x.id===id);if(p){p.status="Cancelado";p.motivoCancelamento=input.value.trim();p.mostrandoCancelamento=false}saveState();renderAll()}
+function renderConferencias(){const el=$("listaConferencias"); if(!el)return; const itens=[...state.conferencias].sort((a,b)=>(a.status==="Pendente"?-1:1)); el.innerHTML=itens.length?"":`<div class="empty-state">Nenhuma conferência gerada.</div>`; itens.forEach(c=>{const d=document.createElement("div");d.className="item";d.innerHTML=`<div class="item-top"><div><p class="item-title">${esc(c.servico)}</p><p class="item-sub">Local: ${esc(c.local||"-")} • Finalizado em: ${br(c.dataFinalizacao)}</p><p class="item-sub">Conferência: ${br(c.dataConferencia)} ${c.tipoErro?`• Erro: ${c.tipoErro}`:""}</p><p class="item-sub">${esc(c.observacao||"")}</p></div><span class="${badgeClass(c.status)}">${c.status}</span></div>${c.status==="Pendente"?`<div class="inline-form"><div class="form-row three"><input id="confData_${c.id}" type="date"><select id="confResultado_${c.id}"><option>Conforme</option><option>Não conforme</option><option>Reinspeção</option></select><select id="confErro_${c.id}"><option value="">Sem erro</option><option>XE</option><option>XR</option><option>XP</option><option>XN</option></select><button class="btn-success" onclick="salvarConferencia(${c.id})">Salvar</button></div><textarea id="confObs_${c.id}" placeholder="Observação"></textarea></div>`:""}`;el.appendChild(d)})}
+function salvarConferencia(id){const c=state.conferencias.find(x=>x.id===id); if(!c)return; c.dataConferencia=$(`confData_${id}`).value||hojeISO(); c.resultado=$(`confResultado_${id}`).value; c.tipoErro=$(`confErro_${id}`).value; c.observacao=$(`confObs_${id}`).value.trim(); c.status=c.resultado==="Conforme"?"Aprovado":(c.resultado==="Reinspeção"?"Reprovado":"Reprovado"); saveState();renderAll()}
+
+// COMPRAS
+function addCompra(){const material=$("compraMaterial").value.trim(), servico=$("compraServico").value.trim(), fornecedor=$("compraFornecedor").value.trim(), inicio=$("compraInicioEng").value, necessidade=$("compraNecessidade").value, pedido=$("compraPedido").value.trim(), status=$("compraStatus").value, obs=$("compraObs").value.trim(); if(!material||!inicio)return; const alerta=addDays(inicio,-7); state.compras.unshift({id:Date.now(),origem:"Manual",material,servico,fornecedor,inicioEng:inicio,dataAlerta:alerta,necessidade,pedido,status,observacao:obs,importado:false}); limparFormCompras(); saveState();renderAll()}
+function addDays(d,n){const x=new Date(d+"T00:00:00");x.setDate(x.getDate()+n);return x.toISOString().slice(0,10)}
+function limparFormCompras(){["compraMaterial","compraServico","compraFornecedor","compraInicioEng","compraNecessidade","compraPedido","compraObs"].forEach(id=>$(id).value="");$("compraStatus").value="Aguardando alerta"}
+function setCompraTab(t,btn){state.ui.compraTab=t;document.querySelectorAll("#page-compras .tab").forEach(x=>x.classList.remove("active"));btn.classList.add("active");saveState();renderCompras()}
+function compraCor(c){if(["Atrasado","Cancelado"].includes(c.status)||c.dataAlerta<hojeISO()&&!["Entregue","Cancelado"].includes(c.status))return"red"; if(c.dataAlerta<=addDays(hojeISO(),7)&&!["Entregue","Cancelado"].includes(c.status))return"yellow"; return"green"}
+function compraStatusAuto(c){if(c.status && !["Aguardando alerta","Preciso cobrar engenheiro"].includes(c.status))return c.status; if(c.dataAlerta<=addDays(hojeISO(),7))return"Preciso cobrar engenheiro"; return"Aguardando alerta"}
+function renderCompras(){const resumo=$("comprasResumo"), lista=$("listaCompras"); if(!resumo||!lista)return; const total=state.compras.length, pend=state.compras.filter(c=>!["Entregue","Cancelado"].includes(c.status)).length, entr=state.compras.filter(c=>c.status==="Entregue").length, atras=state.compras.filter(c=>compraCor(c)==="red").length; resumo.innerHTML=[["Total",total,"blue"],["Pendentes",pend,"yellow"],["Entregues",entr,"green"],["Alertas",atras,"red"]].map(x=>`<div class="card kpi"><div><h3>${x[1]}</h3><p>${x[0]}</p></div></div>`).join(""); let itens=[...state.compras]; const tab=state.ui.compraTab||"geral"; if(tab==="solicitados")itens=itens.filter(c=>["Solicitado","Pedido emitido"].includes(c.status)); if(tab==="pendentes")itens=itens.filter(c=>!["Entregue","Cancelado"].includes(c.status)); if(tab==="historico")itens=itens.filter(c=>["Entregue","Cancelado"].includes(c.status)); if(tab==="fornecedores"){renderFornecedores(lista);return} lista.innerHTML=`<div class="table-wrap"><table><thead><tr><th>Material</th><th>Serviço/Fonte</th><th>Fornecedor</th><th>Início Eng.</th><th>Alerta</th><th>Entrega/Necessidade</th><th>Pedido</th><th>Status</th><th>Ações</th></tr></thead><tbody>${itens.map(c=>`<tr><td>${esc(c.material)}</td><td>${esc(c.servico||c.origem||"")}</td><td>${esc(c.fornecedor||"")}</td><td>${br(c.inicioEng)}</td><td>${br(c.dataAlerta)}</td><td>${br(c.necessidade||c.entregaMaterial)}</td><td>${esc(c.pedido||"")}</td><td><span class="${badgeClass(compraStatusAuto(c))}">${compraStatusAuto(c)}</span></td><td><select onchange="updateCompraStatus(${c.id},this.value)">${["Aguardando alerta","Preciso cobrar engenheiro","Solicitado","Pedido emitido","Em trânsito","Entregue","Atrasado","Cancelado"].map(s=>`<option ${s===c.status?"selected":""}>${s}</option>`).join("")}</select></td></tr>`).join("")}</tbody></table></div>`}
+function renderFornecedores(el){const nomes=[...new Set(state.compras.map(c=>c.fornecedor).filter(Boolean))];el.innerHTML=nomes.length?nomes.map(n=>`<div class="item"><p class="item-title">${esc(n)}</p><p class="item-sub">${state.compras.filter(c=>c.fornecedor===n).length} registros de compra</p></div>`).join(""):`<div class="empty-state">Nenhum fornecedor registrado.</div>`}
+function updateCompraStatus(id,status){const c=state.compras.find(x=>x.id===id);if(c)c.status=status;saveState();renderAll()}
+function comprasParaCobrar(){return state.compras.filter(c=>!["Entregue","Cancelado"].includes(c.status)&&c.dataAlerta<=addDays(hojeISO(),7))}
+function limparComprasImportadas(){state.compras=state.compras.filter(c=>!c.importado);saveState();renderAll();if($("importStatus"))$("importStatus").textContent="Compras importadas removidas. Registros manuais foram mantidos."}
+function importarPlanilhaCompras(event){const file=event.target.files[0]; if(!file)return; if(typeof XLSX==="undefined"){alert("Biblioteca de leitura de Excel não carregou. Verifique a internet e tente novamente.");return;} const reader=new FileReader(); reader.onload=function(e){try{const wb=XLSX.read(new Uint8Array(e.target.result),{type:"array",cellDates:true}); const rows=[]; wb.SheetNames.forEach(sheetName=>{const ws=wb.Sheets[sheetName]; const data=XLSX.utils.sheet_to_json(ws,{header:1,defval:"",raw:true}); rows.push(...parseCompraSheet(data,sheetName));}); const existing=new Set(state.compras.map(c=>compraKey(c))); let added=0; rows.forEach(r=>{if(!r.material||!r.inicioEng)return; const key=compraKey(r); if(existing.has(key))return; existing.add(key); state.compras.push({...r,id:Date.now()+Math.random(),status:"Aguardando alerta",importado:true}); added++;}); saveState(); if($("importStatus"))$("importStatus").textContent=`Planilha importada: ${added} itens adicionados. Total lido: ${rows.length}.`; renderAll();}catch(err){console.error(err); if($("importStatus"))$("importStatus").textContent="Não consegui importar a planilha. Verifique se o arquivo é .xlsx válido.";}}; reader.readAsArrayBuffer(file)}
+function parseCompraSheet(data,sheetName){const out=[]; for(let r=0;r<data.length;r++){const row=data[r].map(x=>String(x||"").trim().toLowerCase()); const hasServico=row.some(v=>v==="serviço"||v==="servico"||v==="material/serviço"||v==="material/servico"||v.includes("serviço")); const hasInicio=row.some(v=>v.includes("início - processo engenheiro")||v.includes("inicio - processo engenheiro")); if(!hasServico||!hasInicio)continue; const headers=data[r].map(x=>String(x||"").trim()); const idx={serv:findHeader(headers,["Material/Serviço","Material/Servico","Serviço","Servico"," Serviço"]),inicioEng:findHeader(headers,["Início - Processo Engenheiro","Inicio - Processo Engenheiro"]),inicioCompras:findHeader(headers,["Início - Processo Compras","Inicio - Processo Compras"]),entrega:findHeader(headers,["Entrega do material"]),inicioServico:findHeader(headers,["Início do serviço","Inicio do serviço","Início do servico","Inicio do servico"]),pedido:findHeader(headers,["NºPedido","Nº Pedido","N°Pedido","N° Pedido"]),fornecedor:findHeader(headers,["Fornecedor","Empresa"]),dataRealEntrega:findHeader(headers,["Data real da entrega"])}; if(idx.serv<0||idx.inicioEng<0)continue; for(let i=r+1;i<data.length;i++){const line=data[i]; const material=String(line[idx.serv]||"").trim(); if(!material)continue; const inicioEng=excelDateToISO(line[idx.inicioEng]); if(!inicioEng)continue; const entrega=idx.entrega>=0?excelDateToISO(line[idx.entrega]):""; const inicioServico=idx.inicioServico>=0?excelDateToISO(line[idx.inicioServico]):""; const dataRealEntrega=idx.dataRealEntrega>=0?excelDateToISO(line[idx.dataRealEntrega]):""; const inicioCompras=idx.inicioCompras>=0?excelDateToISO(line[idx.inicioCompras]):""; const pedido=idx.pedido>=0?String(line[idx.pedido]||"").trim():""; const fornecedor=idx.fornecedor>=0?String(line[idx.fornecedor]||"").trim():""; out.push({origem:sheetName,material,servico:sheetName,fornecedor,inicioEng,inicioCompras,dataAlerta:addDays(inicioEng,-7),necessidade:inicioServico||entrega||"",entregaMaterial:entrega||dataRealEntrega,pedido,observacao:"Importado da planilha de compras"});} break;} return out}
+function findHeader(headers,names){const norm=s=>String(s||"").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/\s+/g," ").trim(); const h=headers.map(norm); for(const name of names){const n=norm(name); const i=h.findIndex(x=>x===n); if(i>=0)return i;} for(const name of names){const n=norm(name); const i=h.findIndex(x=>x.includes(n)||n.includes(x)); if(i>=0)return i;} return -1}
+function excelDateToISO(v){if(!v)return""; if(v instanceof Date && !isNaN(v))return v.toISOString().slice(0,10); if(typeof v==="number"){const parsed=XLSX.SSF.parse_date_code(v,{date1904:true})||XLSX.SSF.parse_date_code(v); if(parsed)return `${parsed.y}-${String(parsed.m).padStart(2,"0")}-${String(parsed.d).padStart(2,"0")}`;} const s=String(v).trim(); if(/^\d{4}-\d{2}-\d{2}/.test(s))return s.slice(0,10); if(/^\d{1,2}\/\d{1,2}\/\d{2,4}$/.test(s)){const [d,m,y]=s.split("/");return `${y.length===2?"20"+y:y}-${m.padStart(2,"0")}-${d.padStart(2,"0")}`;} return ""}
+function compraKey(c){return [c.origem||"",c.material||"",c.inicioEng||"",c.necessidade||""].join("|").toLowerCase()}
+
+// ROTINA
+function rotinaTemplates(){const today=new Date(hojeISO()+"T00:00:00"); const day=today.getDate(); const month=today.getMonth()+1; const dow=today.getDay(); const items=[{id:"diario-1",nome:"Checklist diário do fiscal",freq:"Diário",data:hojeISO(),status:"Pendente",obs:"Conferir equipe, EPIs, limpeza, serviços, materiais e pendências."},{id:"diario-2",nome:"Atualizar produtividade do dia",freq:"Diário",data:hojeISO(),status:"Pendente",obs:"Registrar avanço, horas e consumo quando aplicável."}]; if(dow===1||dow===3)items.push({id:"semana-programacao",nome:"Revisar programação semanal da obra",freq:"Semanal",data:hojeISO(),status:"Pendente",obs:"Atualizar serviços programados e atrasados."}); if(day===1||day===15)items.push({id:"quinz-fornecedor",nome:"Avaliação de fornecedores",freq:"Quinzenal",data:hojeISO(),status:"Pendente",obs:"Preencher qualificação e registrar notas."}); if(day===1||day===15)items.push({id:"quinz-cacamba",nome:"Atualizar retirada de caçambas",freq:"Quinzenal",data:hojeISO(),status:"Pendente",obs:"Usar dados recebidos por e-mail para metas ambientais."}); if(day>=12&&day<=19)items.push({id:"mensal-metas",nome:"Fechar Planilha de Metas Ambientais",freq:"Mensal",data:`${today.getFullYear()}-${String(month).padStart(2,"0")}-19`,status:"Pendente",obs:"Deixar a planilha redonda até dia 19."}); if([1,4,7,10].includes(month)&&day<=10)items.push({id:"trim-afericao",nome:"Aferição de equipamentos",freq:"Trimestral",data:hojeISO(),status:"Pendente",obs:"Meses de controle: janeiro, abril, julho e outubro."}); return items}
+function setRotinaTab(tab,btn){state.ui.rotinaTab=tab;document.querySelectorAll("#page-rotina .tab").forEach(x=>x.classList.remove("active"));btn.classList.add("active");saveState();renderRotina()}
+function iniciarRotinaEsporadica(nome){state.rotinaEsporadica.unshift({id:Date.now(),nome,freq:"Esporádico",dataInicio:hojeISO(),status:"Em andamento",obs:checklistEsporadico(nome),pendencias:""});saveState();renderAll()}
+function checklistEsporadico(nome){if(nome==="Concretagem e Ensaios")return "Checklist: informar MPa do projeto; solicitar moldes e moldador; CPs: 1 para 7 dias, 2 para 28 dias, 1 para 63 dias, 2 para módulo de elasticidade."; if(nome==="Mapeamento de fachada")return "Checklist: registrar balancim, funcionário, pano, dia, cor/legenda e avanço diário."; if(nome==="Mapeamento de aço")return "Checklist: registrar NF, corrida/certificado e local de utilização."; if(nome==="Controle de revisão de projetos")return "Checklist: registrar modificação, anexar croqui/projeto e enviar para as-built."; return ""}
+function renderRotina(){const el=$("listaRotinaInteligente"); if(!el)return; const auto=rotinaTemplates(); const tab=state.ui.rotinaTab||"hoje"; let itens=[]; if(tab==="hoje")itens=auto.filter(i=>["Diário","Quinzenal","Mensal","Trimestral"].includes(i.freq)).concat(state.rotinaEsporadica.filter(i=>i.status!=="Concluído")); if(tab==="semana")itens=auto.filter(i=>["Semanal","Quinzenal","Mensal"].includes(i.freq)).concat(comprasParaCobrar().map(c=>({id:"compra-"+c.id,nome:"Cobrar compra: "+c.material,freq:"Compras",data:c.dataAlerta,status:compraStatusAuto(c),obs:`Início Eng.: ${br(c.inicioEng)} • Origem: ${c.origem||""}`}))); if(tab==="quinzenal")itens=auto.filter(i=>i.freq==="Quinzenal"); if(tab==="mensal")itens=auto.filter(i=>i.freq==="Mensal"); if(tab==="trimestral")itens=auto.filter(i=>i.freq==="Trimestral"); if(tab==="esporadico")itens=state.rotinaEsporadica; el.innerHTML=itens.length?"":`<div class="empty-state">Nenhuma rotina nesta visão.</div>`; itens.forEach(i=>{const d=document.createElement("div");d.className="item";d.innerHTML=`<div class="item-top"><div><p class="item-title">${esc(i.nome)}</p><p class="item-sub"><span class="freq-pill">${esc(i.freq)}</span> ${i.data?` • Data: ${br(i.data)}`:""} ${i.dataInicio?` • Início: ${br(i.dataInicio)}`:""}</p><p class="item-sub">${esc(i.obs||"")}</p></div><span class="${badgeClass(i.status)}">${i.status}</span></div>${i.freq==="Esporádico"&&i.status!=="Concluído"?`<div class="actions"><button class="btn-success" onclick="finalizarRotinaEsporadica(${i.id})">Concluir</button><button class="btn-red" onclick="cancelarRotinaEsporadica(${i.id})">Cancelar</button></div>`:""}`;el.appendChild(d)}); const hoje=auto.filter(i=>["Diário","Quinzenal","Mensal","Trimestral"].includes(i.freq)).length+state.rotinaEsporadica.filter(i=>i.status!=="Concluído").length; if($("rotinaHojeQtd"))$("rotinaHojeQtd").textContent=hoje; if($("rotinaSemanaQtd"))$("rotinaSemanaQtd").textContent=auto.filter(i=>["Semanal","Quinzenal","Mensal"].includes(i.freq)).length+comprasParaCobrar().length; if($("rotinaMensalQtd"))$("rotinaMensalQtd").textContent=auto.filter(i=>i.freq==="Mensal").length; if($("rotinaEsporadicaQtd"))$("rotinaEsporadicaQtd").textContent=state.rotinaEsporadica.filter(i=>i.status!=="Concluído").length}
+function finalizarRotinaEsporadica(id){const r=state.rotinaEsporadica.find(x=>x.id===id);if(r)r.status="Concluído";saveState();renderAll()}
+function cancelarRotinaEsporadica(id){const r=state.rotinaEsporadica.find(x=>x.id===id);if(r)r.status="Cancelado";saveState();renderAll()}
+
+// MAPEAMENTOS
+function addMapeamento(){const tipo=$("mapTipo").value, local=$("mapLocal").value.trim(), data=$("mapData").value, status=$("mapStatus").value, obs=$("mapObs").value.trim(); if(!tipo||!data)return; state.mapeamentos.unshift({id:Date.now(),tipo,local,data,status,observacao:obs});["mapLocal","mapData","mapObs"].forEach(id=>$(id).value="");$("mapStatus").value="Em aberto";saveState();renderAll()}
+function renderMapeamentos(){const el=$("listaMapeamentos"); if(!el)return; el.innerHTML=state.mapeamentos.length?"":`<div class="empty-state">Nenhum mapeamento cadastrado.</div>`; state.mapeamentos.forEach(m=>{const d=document.createElement("div");d.className="item";d.innerHTML=`<div class="item-top"><div><p class="item-title">${esc(m.tipo)}</p><p class="item-sub">Local: ${esc(m.local||"-")} • Data: ${br(m.data)}</p><p class="item-sub">${esc(m.observacao||"")}</p></div><span class="${badgeClass(m.status)}">${m.status}</span></div><div class="actions"><select onchange="updateMapStatus(${m.id},this.value)">${["Em aberto","Aguardando resultado","Aguardando assinatura do engenheiro","Aprovado","Com problema"].map(s=>`<option ${s===m.status?"selected":""}>${s}</option>`).join("")}</select></div>`;el.appendChild(d)})}
+function updateMapStatus(id,status){const m=state.mapeamentos.find(x=>x.id===id);if(m)m.status=status;saveState();renderAll()}
+
+// NOTAS
+function addNota(){const texto=$("notaTexto").value.trim();if(!texto)return;state.notas.unshift({id:Date.now(),data:hojeISO(),texto});$("notaTexto").value="";saveState();renderAll()}
+function renderNotas(){const el=$("listaNotas"); if(!el)return; el.innerHTML=state.notas.length?"":`<div class="empty-state">Nenhuma anotação registrada.</div>`; state.notas.forEach(n=>{const d=document.createElement("div");d.className="item";d.innerHTML=`<p class="item-sub">${br(n.data)}</p><p class="item-title" style="font-weight:500">${esc(n.texto)}</p>`;el.appendChild(d)})}
+
+// STATUS
+function preencherMeses(){const s=$("statusMes"); if(!s)return; s.innerHTML=mesesNomes.map((m,i)=>`<option value="${i}">${m}</option>`).join("");}
+function verificarStatusSelecionado(){const mes=Number($("statusMes").value), ano=Number($("statusAno").value); if(!ano)return; const p=$("painelLancamentoSelecionado"); p.classList.remove("hidden"); const ex=state.statusObra.find(x=>x.mes===mes&&x.ano===ano); if(ex){p.innerHTML=`<strong>${mesesNomes[mes]} / ${ano}</strong><p class="item-title">${Number(ex.realizadoMes).toFixed(2)}% realizado no mês</p><div class="actions"><button class="btn-red" onclick="excluirStatus(${ex.id})">Excluir lançamento</button></div>`}else{p.innerHTML=`<strong>${mesesNomes[mes]} / ${ano}</strong><p class="item-sub">Informe o percentual realizado no mês.</p><input id="novoRealizadoMes" type="number" min="0" max="100" step="0.01" placeholder="% realizada no mês"><div class="actions"><button class="btn-success" onclick="adicionarStatusSelecionado()">Salvar lançamento</button></div>`}}
+function adicionarStatusSelecionado(){const mes=Number($("statusMes").value), ano=Number($("statusAno").value), v=Number($("novoRealizadoMes").value); if(!ano||isNaN(v))return; if(state.statusObra.some(x=>x.mes===mes&&x.ano===ano))return; state.statusObra.push({id:Date.now(),ano,mes,realizadoMes:v});saveState();verificarStatusSelecionado();renderDashboard()}
+function excluirStatus(id){state.statusObra=state.statusObra.filter(x=>x.id!==id);saveState();$("painelLancamentoSelecionado").classList.add("hidden");renderDashboard()}
+function renderDashboard(){const itens=[...state.statusObra].sort((a,b)=>a.ano-b.ano||a.mes-b.mes); const total=itens.reduce((s,x)=>s+Number(x.realizadoMes||0),0); if($("realizadoAcumuladoDashboard"))$("realizadoAcumuladoDashboard").textContent=`${total.toFixed(2)}%`; if($("donutValor"))$("donutValor").textContent=`${total.toFixed(2)}%`; desenharRosca(itens); renderLegenda(itens)}
+function desenharRosca(itens){const canvas=$("graficoRosca"); if(!canvas)return; const ctx=canvas.getContext("2d"); const size=320; canvas.width=size*2; canvas.height=size*2; ctx.setTransform(1,0,0,1,0,0); ctx.scale(2,2); ctx.clearRect(0,0,size,size); const cx=size/2,cy=size/2,r=120,lw=28; ctx.beginPath();ctx.arc(cx,cy,r,0,Math.PI*2);ctx.strokeStyle="#e5e7eb";ctx.lineWidth=lw;ctx.lineCap="butt";ctx.stroke(); let a=-Math.PI/2; itens.forEach((it,i)=>{const val=Number(it.realizadoMes||0);if(val<=0)return; const seg=(val/100)*Math.PI*2;ctx.beginPath();ctx.arc(cx,cy,r,a,a+seg);ctx.strokeStyle=coresSegmentos[i%coresSegmentos.length];ctx.lineWidth=lw;ctx.lineCap="butt";ctx.stroke();a+=seg})}
+function renderLegenda(itens){const el=$("legendaGraficoStatus"); if(!el)return; el.innerHTML=itens.length?"":`<div class="empty-state">Nenhum mês lançado ainda.</div>`; itens.forEach((it,i)=>{const d=document.createElement("div");d.className="legend-item";d.innerHTML=`<div class="legend-left"><span class="dot" style="background:${coresSegmentos[i%coresSegmentos.length]}"></span><strong>${mesesNomes[it.mes]} / ${it.ano}</strong></div><span>${Number(it.realizadoMes).toFixed(2)}%</span>`;el.appendChild(d)})}
+
+// DASH
+function renderDash(){const conf=state.conferencias.filter(c=>c.status==="Pendente"), compras=comprasParaCobrar(), venc=state.programacoes.filter(p=>p.status==="Programado"&&p.data<hojeISO()).length+compras.filter(c=>compraCor(c)==="red").length, av=state.statusObra.reduce((s,x)=>s+Number(x.realizadoMes||0),0), rotinaQtd=rotinaTemplates().filter(i=>["Diário","Quinzenal","Mensal","Trimestral"].includes(i.freq)).length+state.rotinaEsporadica.filter(i=>i.status!=="Concluído").length; if($("kpiConferencias"))$("kpiConferencias").textContent=conf.length;if($("kpiCompras"))$("kpiCompras").textContent=compras.length;if($("kpiVencidas"))$("kpiVencidas").textContent=venc;if($("kpiServicosFinalizados"))$("kpiServicosFinalizados").textContent=state.programacoes.filter(p=>p.status==="Finalizado").length;if($("kpiProgramacoes"))$("kpiProgramacoes").textContent=state.programacoes.filter(p=>["Programado","Em execução"].includes(p.status)).length;if($("kpiMateriais"))$("kpiMateriais").textContent=state.materiais.filter(m=>m.status==="Pendente").length;if($("kpiAvanco"))$("kpiAvanco").textContent=av.toFixed(1)+"%";if($("kpiRotina"))$("kpiRotina").textContent=rotinaQtd;
+ renderMiniList("dashConferencias",conf.map(c=>({t:c.servico,s:`${c.local||"-"} • ${br(c.dataFinalizacao)}`,b:c.status})));
+ renderMiniList("dashCompras",compras.map(c=>({t:c.material,s:`Alerta: ${br(c.dataAlerta)} • Início Eng.: ${br(c.inicioEng)} • ${c.origem||""}`,b:compraStatusAuto(c)})));
+ renderMiniList("dashRotina",rotinaTemplates().concat(state.rotinaEsporadica.filter(i=>i.status!=="Concluído")).map(r=>({t:r.nome,s:`${r.freq} • ${r.obs||""}`,b:r.status})));
+ renderMiniList("dashProgramacoesAtrasadas",state.programacoes.filter(p=>p.status==="Programado"&&p.data<hojeISO()).map(p=>({t:p.frente,s:`${p.area||"-"} • ${br(p.data)}`,b:"Atrasado"})));
+ renderMiniList("dashMateriais",state.materiais.filter(m=>m.status==="Pendente").slice(0,8).map(m=>({t:m.material,s:`Pedido: ${m.pedido||"-"} • ${br(m.previsto)}`,b:m.status})));
+ renderMiniList("dashNotas",state.notas.slice(0,8).map(n=>({t:n.texto,s:br(n.data),b:"Anotação"})));
+}
+function renderMiniList(id,arr){const el=$(id); if(!el)return; el.innerHTML=arr.length?"":`<div class="empty-state">Nada pendente.</div>`; arr.slice(0,8).forEach(x=>{const d=document.createElement("div");d.className="item";d.innerHTML=`<div class="item-top"><div><p class="item-title">${esc(x.t)}</p><p class="item-sub">${esc(x.s)}</p></div><span class="${badgeClass(x.b)}">${x.b}</span></div>`;el.appendChild(d)})}
+
+function renderAll(){renderHeader();renderChecklist();renderPendencias();renderMateriais();renderProgramacao();renderConferencias();renderCompras();renderRotina();renderMapeamentos();renderNotas();renderDashboard();renderDash();updateOldSummary()}
+function updateOldSummary(){if($("checklistResumo")){const pct=state.checklist.length?Math.round(state.checklist.filter(i=>i.done).length/state.checklist.length*100):0;$("checklistResumo").textContent=pct+"%"} if($("pendenciasResumo"))$("pendenciasResumo").textContent=state.pendencias.filter(p=>p.status!=="Concluído").length; if($("materiaisResumo"))$("materiaisResumo").textContent=state.materiais.filter(m=>m.status==="Pendente").length; if($("programacoesResumo"))$("programacoesResumo").textContent=state.programacoes.filter(p=>p.status==="Programado").length}
+function init(){preencherMeses(); if($("statusAno"))$("statusAno").value=new Date().getFullYear();renderAll()}
+init();
+</script>
+</body>
+</html>
