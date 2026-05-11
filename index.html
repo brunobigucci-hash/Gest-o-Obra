@@ -151,9 +151,15 @@ function importarPlanilhaCompras(e){
 
   reader.onload=function(ev){
     try{
+      // IMPORTANTE:
+      // Esta planilha padrão da MBigucci vem com diferença de 1462 dias no valor interno da data.
+      // Exemplo informado: 44340 deveria ser 45802.
+      // Por isso, na importação da aba CronogramaCompras, o site soma 1462 dias na data lida.
       let wb=XLSX.read(new Uint8Array(ev.target.result),{
         type:'array',
-        cellDates:true
+        cellDates:false,
+        cellNF:true,
+        cellText:true
       });
 
       let sheetName=wb.SheetNames.find(n=>String(n).trim().toLowerCase()==='cronogramacompras');
@@ -163,33 +169,40 @@ function importarPlanilhaCompras(e){
       }
 
       let ws=wb.Sheets[sheetName];
-      let linhas=XLSX.utils.sheet_to_json(ws,{
-        header:1,
-        defval:'',
-        raw:true
-      });
+
+      if(!ws || !ws['!ref']){
+        $('importStatus').textContent='A aba CronogramaCompras está vazia ou não pôde ser lida.';
+        return;
+      }
+
+      let range=XLSX.utils.decode_range(ws['!ref']);
 
       let cabecalho=-1;
       let colMaterial=-1;
       let colInicio=-1;
 
-      for(let i=0;i<Math.min(linhas.length,40);i++){
-        let row=(linhas[i]||[]).map(v=>normalizarTexto(v));
+      for(let r=range.s.r;r<=Math.min(range.e.r,60);r++){
+        let textos=[];
+        for(let c=range.s.c;c<=range.e.c;c++){
+          textos.push(normalizarTexto(valorCelula(ws,r,c)));
+        }
 
-        colMaterial=row.findIndex(v=>
+        let idxMaterial=textos.findIndex(v=>
           v==='material/servico' ||
           v==='material servico' ||
           v.includes('material/servico') ||
           v.includes('material servico')
         );
 
-        colInicio=row.findIndex(v=>
+        let idxInicio=textos.findIndex(v=>
           v==='inicio - processo engenheiro' ||
           v.includes('inicio - processo engenheiro')
         );
 
-        if(colMaterial>=0 && colInicio>=0){
-          cabecalho=i;
+        if(idxMaterial>=0 && idxInicio>=0){
+          cabecalho=r;
+          colMaterial=range.s.c+idxMaterial;
+          colInicio=range.s.c+idxInicio;
           break;
         }
       }
@@ -199,26 +212,24 @@ function importarPlanilhaCompras(e){
         return;
       }
 
-      // Mantém tudo que foi feito manualmente e remove apenas importações antigas da planilha,
-      // para não duplicar nem manter datas erradas de importações anteriores.
+      // Mantém registros manuais e remove apenas importações anteriores da planilha,
+      // evitando duplicidade e datas antigas erradas.
       state.compras=state.compras.filter(c=>!c.importado);
 
       let adicionados=0;
       let ignorados=0;
       let keys=new Set(state.compras.map(kCompra));
 
-      for(let i=cabecalho+1;i<linhas.length;i++){
-        let row=linhas[i]||[];
+      for(let r=cabecalho+1;r<=range.e.r;r++){
+        let material=String(valorCelula(ws,r,colMaterial)||'').trim();
+        let celulaData=ws[XLSX.utils.encode_cell({r:r,c:colInicio})];
 
-        let material=String(row[colMaterial]||'').trim();
-        let dataOriginal=row[colInicio];
-
-        if(!material || !dataOriginal){
+        if(!material || !celulaData){
           ignorados++;
           continue;
         }
 
-        let inicioEng=converterDataExcel(dataOriginal);
+        let inicioEng=converterDataCronogramaCompras(celulaData);
 
         if(!inicioEng){
           ignorados++;
@@ -257,6 +268,17 @@ function importarPlanilhaCompras(e){
   reader.readAsArrayBuffer(file);
 }
 
+function valorCelula(ws,r,c){
+  let cell=ws[XLSX.utils.encode_cell({r:r,c:c})];
+  if(!cell)return'';
+
+  // Para cabeçalho e material, o texto visível é o mais seguro.
+  if(cell.w!==undefined && cell.w!==null)return String(cell.w).trim();
+  if(cell.v!==undefined && cell.v!==null)return String(cell.v).trim();
+
+  return'';
+}
+
 function normalizarTexto(v){
   return String(v||'')
     .toLowerCase()
@@ -270,32 +292,57 @@ function kCompra(c){
   return [c.material||'',c.inicioEng||''].join('|').toLowerCase();
 }
 
-function converterDataExcel(valor){
-  if(!valor)return'';
+function converterDataCronogramaCompras(cell){
+  if(!cell)return'';
 
-  // Quando o XLSX já interpreta como data.
-  if(valor instanceof Date && !isNaN(valor)){
-    return dataLocalISO(valor);
+  // Caso 1: valor numérico serial do Excel.
+  // Correção obrigatória para esta planilha: +1462.
+  if(typeof cell.v==='number'){
+    let serialCorrigido=cell.v+1462;
+    return excelSerialParaISO(serialCorrigido);
   }
 
-  // Quando vem como número serial do Excel.
-  // A planilha CronogramaCompras está vindo com diferença de 1462 dias.
-  // Exemplo informado: 44340 deveria ser 45802.
-  // Por isso somamos 1462 antes de converter a data.
-  if(typeof valor==='number'){
-    let serialCorrigido=valor+1462;
-    let data=new Date(Math.round((serialCorrigido-25569)*86400*1000));
-    return dataLocalISO(data);
+  // Caso 2: caso o navegador/biblioteca já tenha convertido para Date.
+  // Também corrigimos somando 1462 dias.
+  if(cell.v instanceof Date && !isNaN(cell.v)){
+    let d=new Date(cell.v.getTime());
+    d.setDate(d.getDate()+1462);
+    return dataLocalISO(d);
   }
 
-  let texto=String(valor).trim();
+  // Caso 3: tentar ler o texto exibido ou valor bruto.
+  let texto='';
+  if(cell.w!==undefined && cell.w!==null)texto=String(cell.w).trim();
+  if(!texto && cell.v!==undefined && cell.v!==null)texto=String(cell.v).trim();
 
-  // Formato ISO: 2026-05-28
+  // Se o texto for número, também aplicar +1462.
+  if(/^\d+(\.\d+)?$/.test(texto)){
+    let serialCorrigido=Number(texto)+1462;
+    return excelSerialParaISO(serialCorrigido);
+  }
+
+  // Se vier em formato brasileiro já visível, usar diretamente.
+  let parsed=parseDateText(texto);
+  if(parsed)return parsed;
+
+  return'';
+}
+
+function excelSerialParaISO(serial){
+  // Base correta para Excel no JavaScript.
+  let data=new Date(Math.round((serial-25569)*86400*1000));
+  return dataUTCISO(data);
+}
+
+function parseDateText(texto){
+  if(!texto)return'';
+
+  // ISO: 2026-05-28
   if(/^\d{4}-\d{2}-\d{2}/.test(texto)){
     return texto.slice(0,10);
   }
 
-  // Formato brasileiro: 28/05/2026 ou 28-05-2026 ou 28.05.2026
+  // BR: 28/05/2026 ou 28-05-2026 ou 28.05.2026
   let m=texto.match(/^(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{2,4})$/);
   if(m){
     let dia=m[1].padStart(2,'0');
@@ -307,10 +354,17 @@ function converterDataExcel(valor){
   return'';
 }
 
-function dataLocalISO(data){
+function dataUTCISO(data){
   let ano=data.getUTCFullYear();
   let mes=String(data.getUTCMonth()+1).padStart(2,'0');
   let dia=String(data.getUTCDate()).padStart(2,'0');
+  return `${ano}-${mes}-${dia}`;
+}
+
+function dataLocalISO(data){
+  let ano=data.getFullYear();
+  let mes=String(data.getMonth()+1).padStart(2,'0');
+  let dia=String(data.getDate()).padStart(2,'0');
   return `${ano}-${mes}-${dia}`;
 }
 
