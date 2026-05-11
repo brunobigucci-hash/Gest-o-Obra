@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -279,8 +280,12 @@ function converterDataExcel(valor){
   }
 
   // Quando vem como número serial do Excel.
+  // A planilha CronogramaCompras está vindo com diferença de 1462 dias.
+  // Exemplo informado: 44340 deveria ser 45802.
+  // Por isso somamos 1462 antes de converter a data.
   if(typeof valor==='number'){
-    let data=new Date(Math.round((valor-25569)*86400*1000));
+    let serialCorrigido=valor+1462;
+    let data=new Date(Math.round((serialCorrigido-25569)*86400*1000));
     return dataLocalISO(data);
   }
 
