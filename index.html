@@ -107,7 +107,7 @@ function setCompraFiltro(f,b){state.ui.compraFiltro=f;document.querySelectorAll(
 function renderCompras(){
   let resumo=$('comprasResumo'),lista=$('listaCompras');if(!resumo||!lista)return;
   let avisos=comprasAviso();
-  let futuros=state.compras.filter(c=>!c.pedidoFeitoEm&&!c.finalizadoEm&&c.dataAlerta>addDays(hoje(),7)).sort((a,b)=>a.dataAlerta.localeCompare(b.dataAlerta));
+  let futuros=state.compras.filter(c=>!c.pedidoFeitoEm&&!c.finalizadoEm&&c.dataAlerta>addDays(hoje()).sort((a,b)=>a.dataAlerta.localeCompare(b.dataAlerta));
   let pedido=state.compras.filter(c=>c.pedidoFeitoEm&&!c.finalizadoEm).sort((a,b)=>(a.pedidoFeitoEm||'').localeCompare(b.pedidoFeitoEm||''));
   let fin=state.compras.filter(c=>c.finalizadoEm).sort((a,b)=>(b.finalizadoEm||'').localeCompare(a.finalizadoEm||''));
   resumo.innerHTML=[
