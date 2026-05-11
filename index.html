@@ -144,10 +144,15 @@ function importarPlanilhaCompras(e){
   let reader=new FileReader();
   reader.onload=ev=>{
     try{
-      let wb=XLSX.read(new Uint8Array(ev.target.result),{type:'array',cellDates:true});
+      let wb=XLSX.read(new Uint8Array(ev.target.result),{type:'array',cellDates:false,cellNF:true,cellText:true});
       let sheetName=wb.SheetNames.find(n=>normText(n)==='cronogramacompras');
       if(!sheetName){$('importStatus').textContent='Não encontrei a aba CronogramaCompras na planilha.';return;}
-      let rows=parseCronogramaCompras(XLSX.utils.sheet_to_json(wb.Sheets[sheetName],{header:1,defval:'',raw:true}));
+      let rows=parseCronogramaComprasSheet(wb.Sheets[sheetName]);
+
+      // Para evitar datas antigas erradas/duplicadas, cada importação substitui os itens importados anteriores.
+      // Itens criados manualmente ficam preservados.
+      state.compras=state.compras.filter(c=>!c.importado);
+
       let keys=new Set(state.compras.map(kCompra));
       let add=0;
       rows.forEach(r=>{
@@ -158,44 +163,92 @@ function importarPlanilhaCompras(e){
         add++;
       });
       save();
-      $('importStatus').textContent=`${add} aviso(s) importado(s) da aba CronogramaCompras. Só foram puxados itens com data em Início - Processo Engenheiro.`;
+      $('importStatus').textContent=`${add} aviso(s) importado(s) da aba CronogramaCompras. Foram puxados apenas Material/Serviço e Início - Processo Engenheiro.`;
       renderAll();
     }catch(err){console.error(err);$('importStatus').textContent='Erro ao importar a planilha.'}
   };
   reader.readAsArrayBuffer(file)
 }
 function kCompra(c){return [c.material,c.inicioEng].join('|').toLowerCase()}
-function parseCronogramaCompras(data){
+
+function parseCronogramaComprasSheet(ws){
   let out=[];
-  for(let r=0;r<data.length;r++){
-    let h=data[r].map(x=>String(x||'').trim()),norm=h.map(normText);
-    let idxMat=norm.findIndex(x=>x.includes('material/servico')||x==='servico'||x==='material servico');
-    let idxIni=norm.findIndex(x=>x.includes('inicio - processo engenheiro'));
-    if(idxMat<0||idxIni<0)continue;
-    for(let i=r+1;i<data.length;i++){
-      let mat=String(data[i][idxMat]||'').trim();
-      let ini=dateISO(data[i][idxIni]);
-      if(mat&&ini)out.push({material:mat,inicioEng:ini,origem:'CronogramaCompras'});
+  if(!ws||!ws['!ref'])return out;
+  let range=XLSX.utils.decode_range(ws['!ref']);
+  let headerRow=-1, idxMat=-1, idxIni=-1;
+
+  for(let r=range.s.r;r<=Math.min(range.e.r,80);r++){
+    let headers=[];
+    for(let c=range.s.c;c<=range.e.c;c++){
+      headers.push(normText(getCellText(ws,r,c)));
     }
-    break;
+    let m=headers.findIndex(x=>x==='material/servico'||x==='material servico'||x==='servico');
+    let i=headers.findIndex(x=>x==='inicio - processo engenheiro');
+    if(m>=0&&i>=0){headerRow=r;idxMat=m+range.s.c;idxIni=i+range.s.c;break;}
+  }
+
+  if(headerRow<0)return out;
+
+  for(let r=headerRow+1;r<=range.e.r;r++){
+    let material=getCellText(ws,r,idxMat).trim();
+    let inicio=cellDateISO(ws[XLSX.utils.encode_cell({r,c:idxIni})]);
+    if(material&&inicio){
+      out.push({material:material,inicioEng:inicio,origem:'CronogramaCompras'});
+    }
   }
   return out;
 }
+function getCellText(ws,r,c){
+  let cell=ws[XLSX.utils.encode_cell({r,c})];
+  if(!cell)return'';
+  if(cell.w!==undefined&&cell.w!==null)return String(cell.w).trim();
+  if(cell.v!==undefined&&cell.v!==null)return String(cell.v).trim();
+  return''
+}
 function normText(s){return String(s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/\s+/g,' ').trim()}
-function dateISO(v){
-  if(!v)return'';
-  if(v instanceof Date&&!isNaN(v))return v.toISOString().slice(0,10);
-  if(typeof v==='number'){
-    let p=XLSX.SSF.parse_date_code(v);
+
+function cellDateISO(cell){
+  if(!cell)return'';
+
+  // Prioridade 1: usar o texto visível do Excel, pois ele preserva o ano correto exibido na planilha.
+  if(cell.w){
+    let parsed=parseDateText(String(cell.w).trim());
+    if(parsed)return parsed;
+  }
+
+  // Prioridade 2: datas reais do JS.
+  if(cell.v instanceof Date&&!isNaN(cell.v)){
+    return localDateISO(cell.v);
+  }
+
+  // Prioridade 3: número serial do Excel, sempre no sistema 1900 para esta planilha padrão.
+  if(typeof cell.v==='number'){
+    let p=XLSX.SSF.parse_date_code(cell.v,{date1904:false});
     if(p)return`${p.y}-${String(p.m).padStart(2,'0')}-${String(p.d).padStart(2,'0')}`;
   }
-  let s=String(v).trim();
-  if(/^\d{4}-\d{2}-\d{2}/.test(s))return s.slice(0,10);
-  if(/^\d{1,2}\/\d{1,2}\/\d{2,4}$/.test(s)){
-    let[a,b,c]=s.split('/');
-    return`${c.length===2?'20'+c:c}-${b.padStart(2,'0')}-${a.padStart(2,'0')}`;
+
+  // Prioridade 4: texto cru.
+  if(cell.v!==undefined&&cell.v!==null){
+    let parsed=parseDateText(String(cell.v).trim());
+    if(parsed)return parsed;
   }
   return''
+}
+function parseDateText(s){
+  if(!s)return'';
+  if(/^\d{4}-\d{2}-\d{2}/.test(s))return s.slice(0,10);
+
+  // aceita 20/01/2026, 20-01-2026, 20.01.2026
+  let m=s.match(/^(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{2,4})$/);
+  if(m){
+    let d=m[1],mo=m[2],y=m[3];
+    if(y.length===2)y='20'+y;
+    return`${y}-${String(mo).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+  }
+  return''
+}
+function localDateISO(d){
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
 }
 function diasAteData(data){
   return Math.ceil((new Date(data+'T00:00:00')-new Date(hoje()+'T00:00:00'))/86400000);
